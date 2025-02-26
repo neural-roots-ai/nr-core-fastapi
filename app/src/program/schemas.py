@@ -88,3 +88,22 @@ class CountryDB(CountryBase):
 
     class Config:
         orm_mode = True
+
+class ProgramJoinResponse(ProgramBase):
+    program_id: int
+    created_on: datetime
+    updated_on: datetime
+    category: ProgramCategoryBase
+    type: ProgramTypeBase
+
+    class Config:
+        orm_mode = True
+
+class ProgramTypeReviews(ProgramTypeBase):
+    program_type_id: int
+    created_on: datetime
+    updated_on: datetime
+    reviews: ReviewDB
+
+    class Config:
+        orm_mode = True

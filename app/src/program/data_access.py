@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
-from src.program.models import Program
+from src.program.models import Program, ProgramCategory, ProgramType, Review
 from typing import List
 from src.db import get_db
 
@@ -47,4 +47,17 @@ def get_program_list_by_program_type(skip: int = 0, limit: int = 100, db: Sessio
 def get_program_list_by_program_category(program_category_id, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):  
     programs = db.query(Program).filter(Program.program_category_id == program_category_id)\
         .offset(skip).limit(limit).all()
+    return programs
+
+def get_programs_list_by_type_and_category(skip, limit, db):
+    programs = db.query(Program).join(ProgramType, Program.program_type_id == ProgramType.program_type_id)\
+              .join(ProgramCategory, Program.program_category_id == ProgramCategory.program_category_id)\
+              .filter(Program.is_active == True).order_by(Program.program_sequence)\
+              .offset(skip).limit(limit).all()
+    return programs
+
+def get_programtype_and_reviews(skip, limit, db):
+    programs = db.query(ProgramType).join(Review, Review.program_type == ProgramType.program_type_id)\
+               .order_by(ProgramType.program_type_sequence)\
+               .offset(skip).limit(limit).all()
     return programs
