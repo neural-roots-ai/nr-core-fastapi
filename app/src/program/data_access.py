@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
-from src.program.models import Program, ProgramCategory, ProgramType, Review
+from src.program.models import Program, ProgramCategory, ProgramType, Review, FAQ
 from typing import List
 from src.db import get_db
 
@@ -61,3 +61,7 @@ def get_programtype_and_reviews(skip, limit, db):
                .order_by(ProgramType.program_type_sequence)\
                .offset(skip).limit(limit).all()
     return programs
+
+def get_faqs(skip, limit, db):
+    faq = db.query(FAQ).order_by(FAQ.faq_sequence).offset(skip).limit(limit).all()
+    return faq

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.program import data_access as program_data_access
 from src.db import get_db
-from src.program.schemas import ProgramDB, ProgramCategoryDB, ProgramJoinResponse, ProgramTypeReviews
+from src.program.schemas import ProgramDB, ProgramCategoryDB, ProgramJoinResponse, ProgramTypeReviews, FAQDB
 from typing import List
 from logger import trace_execution
 
@@ -40,3 +40,7 @@ async def get_programs_list_by_type_and_category(skip: int = 0, limit: int = 100
 async def get_programtype_and_reviews(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return program_data_access.get_programtype_and_reviews(skip, limit, db)
 
+@trace_execution
+@router.get("/faqs", response_model= List[FAQDB])
+async def get_faqs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return program_data_access.get_faqs(skip, limit, db)
