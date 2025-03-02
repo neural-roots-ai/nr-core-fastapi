@@ -6,9 +6,9 @@ from logger import trace_execution
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@trace_execution
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    status = pwd_context.verify(plain_password, hashed_password)
+    return status
 
 @trace_execution
 def get_password_hash(password):
