@@ -10,3 +10,8 @@ PostgreSQL_ ={
     "database": "NRDB"
 }
 DATABASE_URL = f"postgresql://{PostgreSQL_['user']}:{PostgreSQL_['password']}@{PostgreSQL_['host']}:{PostgreSQL_['port']}/{PostgreSQL_['database']}"
+
+SMTP_SERVER = "smtpout.secureserver.net"  
+SMTP_PORT = 465  # For TLS
+SMTP_USERNAME = "info@neuralroots.in"  # Your email address
+SMTP_PASSWORD = "Prateek@97"  # Your email password or app password (recommended)
