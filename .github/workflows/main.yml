@@ -9,6 +9,14 @@ jobs:
   build_and_push:
     runs-on: ubuntu-latest
     steps:
+      - name: Set up environment variables
+        run: |
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_DB_USERNAME }}" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=${{ secrets.POSTGRES_DB_HOST }}" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=${{ secrets.POSTGRES_DB_HOST }}" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=${{ secrets.POSTGRES_DB_HOST }}" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=${{ secrets.POSTGRES_DB_HOST }}" >> $GITHUB_ENV
+
       - name: Checkout the repo
         uses: actions/checkout@v2
       

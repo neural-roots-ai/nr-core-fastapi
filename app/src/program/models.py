@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.db import Base
@@ -70,3 +70,61 @@ class Country(Base):
     created_on = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_on = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, nullable=False)
+
+
+# SQLAlchemy Models
+class ProgramFee(Base):
+    __tablename__ = "program_fee"
+
+    program_fee_id = Column(primary_key=True, index=True)
+    program_id = Column(Integer, ForeignKey("program.program_id"), nullable=False)
+    program_fee = Column(String(100), nullable=False)
+    payment_link = Column(String(100), nullable=False)
+    country_id = Column(Integer, ForeignKey("country.country_id"), nullable=False)
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    discount = Column(Integer, nullable=False)
+    is_active = Column(Boolean, nullable=False)
+
+class ProgramDetail(Base):
+    __tablename__ = "program_detail"
+
+    program_detail_id = Column(primary_key=True, index=True)
+    program_id = Column(Integer, ForeignKey("program.program_id"), nullable=False)
+    program_desc = Column(String(500), nullable=False)
+    median_salary = Column(Integer, nullable=False)
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    job_opening = Column(Integer, nullable=False)
+    is_active = Column(Boolean, nullable=False)
+    faq_id = Column(Integer, ForeignKey("faq.faq_id"), nullable=False)
+    review_id = Column(Integer, ForeignKey("review.review_id"), nullable=False)
+
+class Curriculum(Base):
+    __tablename__ = "curriculum"
+
+    curriculum_id = Column(primary_key=True, index=True)
+    module_id = Column(Integer, nullable=False)
+    program_id = Column(Integer, ForeignKey("program.program_id"), nullable=False)
+    curriculum_title = Column(String(50), nullable=False)
+    topics = Column(String(500))
+    module_duration = Column(Integer, nullable=False)
+    is_active = Column(Boolean, nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+
+class Project(Base):
+    __tablename__ = "project"
+
+    project_id = Column(primary_key=True, index=True)
+    program_id = Column(Integer, ForeignKey("program.program_id"), nullable=False)
+    project_title = Column(String(100), nullable=False)
+    project_description = Column(String(500), nullable=False)
+    project_outcome = Column(String(500))
+    project_sequence = Column(Integer, nullable=False)
+    project_img = Column(String(500))
+    project_tag = Column(String(100), nullable=False)
+    is_active = Column(Boolean, nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+

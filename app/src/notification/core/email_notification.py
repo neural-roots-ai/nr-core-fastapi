@@ -1,6 +1,4 @@
 import smtplib
-import schedule
-import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logger
