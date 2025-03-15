@@ -4,33 +4,25 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from src.authentication.utils import verify_password, get_password_hash, create_access_token
 from src.authentication.models import TokenData
-from src.db import SessionLocal, engine, Base
 from src.users.model import User
 from settings import SECRET_KEY, ALGORITHM
 from logger import trace_execution
-
-Base.metadata.create_all(bind=engine)
+from src.db import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 @trace_execution
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@trace_execution
 def get_user(db: Session, username: str):
-    return db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.username==username).first()
+    return user
 
 @trace_execution
 def authenticate_user(db: Session, username: str, password: str):
-    user = get_user(db, username)
+    user = db.query(User).filter(User.username==username).first()
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    verify_password_status = verify_password(password, user.hashed_password)
+    if not verify_password_status:
         return False
     return user
 

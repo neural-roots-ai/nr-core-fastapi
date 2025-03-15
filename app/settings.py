@@ -1,12 +1,20 @@
-SECRET_KEY = "1ff3eec8197cbf1a294e20a1c590155f2d0bdd2a5528495c2ab858ca1e45ba15"  # Replace with a strong, random secret key
+import os
+
+SECRET_KEY =  os.getenv('FAST_API_SECRET_KEY') # Replace with a strong, random secret key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 PostgreSQL_ ={
-    "user": "neural_roots_stage",
-    "password": "neuralroots",
-    "host": "vps.neuralroots.in",
-    "port": "5430",
+    "user": os.getenv('POSTGRES_DB_USERNAME'),
+    "password": os.getenv('POSTGRES_DB_PASSWORD'),
+    "host": os.getenv('POSTGRES_DB_HOST'),
+    "port": os.getenv('POSTGRES_DB_PORT'),
     "database": "NRDB"
 }
+
 DATABASE_URL = f"postgresql://{PostgreSQL_['user']}:{PostgreSQL_['password']}@{PostgreSQL_['host']}:{PostgreSQL_['port']}/{PostgreSQL_['database']}"
+
+SMTP_SERVER = os.getenv('SMTP_SERVER')
+SMTP_PORT = os.getenv('SMTP_PORT')  # For TLS
+SMTP_USERNAME = os.getenv('POSTGRES_DB_USERNAME') # Your email address
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD') # Your email password or app password (recommended)
