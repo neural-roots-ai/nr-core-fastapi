@@ -34,4 +34,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/neural-roots-core-fastapi:v1.0.0
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/neural-roots-core-fastapi:v1.0.01
