@@ -1,5 +1,23 @@
 import os
 
+
+print("*"*100)
+print("*"*100)
+print("*"*100)
+print(os.getenv('POSTGRES_DB_USERNAME'))
+print(os.getenv('POSTGRES_DB_PASSWORD'))
+print(os.getenv('POSTGRES_DB_HOST'))
+print(os.getenv('POSTGRES_DB_PORT'))
+print(os.getenv('FAST_API_SECRET_KEY'))
+print(os.getenv('SMTP_SERVER'))
+print(os.getenv('SMTP_PORT'))
+print(os.getenv('SMTP_USERNAME'))
+print(os.getenv('SMTP_PASSWORD'))
+print("*"*100)
+print("*"*100)
+print("*"*100)
+
+
 SECRET_KEY =  os.getenv('FAST_API_SECRET_KEY') # Replace with a strong, random secret key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
