@@ -21,9 +21,11 @@ async def get_candidate_info_list(skip=0, limit=100,db: Session = Depends(get_db
     return res
 
 @logger.trace_execution
-@router.post("/add-candidate-info", response_model=schemas.CandidateCreateResponse)
+@router.post("/add-candidate-info")
 async def add_candidate_info(candidate_form: schemas.CandidateInfoCreate, db: Session = Depends(get_db)):
     res = await notification_data_access.add_candidate_info(candidate_form, db)
     if not res:
-        return HTTPException(status_code=400, detail="duplicate records found")
+        return HTTPException(status_code=400, detail="Respone not found")
+    if res.get("status"):
+        return res
     return res

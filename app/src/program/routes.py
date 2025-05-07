@@ -5,8 +5,9 @@ from src.program import data_access as program_db
 from src.db import get_db
 from logger import trace_execution
 from src.constants import ProgramConstants
+from src.authentication import dependencies
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(dependencies.get_current_user)])
 
 @trace_execution
 @router.get("/get-program-detail")

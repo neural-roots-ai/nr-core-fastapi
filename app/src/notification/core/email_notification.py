@@ -22,6 +22,6 @@ def send_email(client_information, email_content):
     message.attach(MIMEText(email_content.content, "plain"))
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
         server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.sendmail(SMTP_USERNAME, email_to, message.as_string())
+        server.sendmail(SMTP_USERNAME, client_information.email_address, message.as_string())
         status = True
     return status

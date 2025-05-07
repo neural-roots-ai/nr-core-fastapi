@@ -1,3 +1,4 @@
+import psycopg2
 from src.notification import models
 import logger
 from datetime import datetime, timezone, timedelta
@@ -20,21 +21,31 @@ def get_candidate_info_list_(skip, limit, db, *args, **kwargs):
     return candidate_list
 
 @logger.trace_execution
-def add_candidate_info(candidate_form, db):
+async def add_candidate_info(candidate_form, db):
     email_level = 0
     try:
         candidate = models.CandidateInfo(**candidate_form.dict())
         status, email_content=get_email_content(
             email_level, candidate.program_type_id, candidate.program_category_id, db
             )
+        
+        candidate_exists = db.query(models.CandidateInfo).filter(
+            models.CandidateInfo.email_address == candidate.email_address,
+            models.CandidateInfo.is_active==True).first()
+        
+        if candidate_exists:
+            email_notification.send_email(candidate, email_content)
+            return {"status": True, "message": "Candidate already exists"}
+        
         if status:
             candidate.is_email_sent_level_0 = True
-            candidate.email_level_0_id = email_level.email_content_id
+            candidate.email_level_0_id = email_content.email_content_id
             db.add(candidate)
             db.commit()
             db.refresh(candidate)
             email_notification.send_email(candidate, email_content)
             return candidate
+
     except Exception as e:
         db.rollback()
         return None
