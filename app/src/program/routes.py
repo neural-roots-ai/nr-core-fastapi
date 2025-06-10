@@ -48,3 +48,39 @@ async def get_learning_page_faq(db: Session = Depends(get_db)):
     if not response:
         return HTTPException(status_code=404, detail="review not found")
     return response
+
+
+@trace_execution
+@router.get("/get-curriculum-by-program-id")
+async def get_curriculum_by_program_id(program_id, db: Session = Depends(get_db)):
+    response = await program_db.get_curriculum_by_program_id(program_id, db)
+    if not response:
+        return HTTPException(status_code=404, detail="review not found")
+    return response
+
+
+@trace_execution
+@router.get("/get-project-list")
+async def get_project_list(db: Session = Depends(get_db)):
+    response = await program_db.get_project_list(db)
+    if not response:
+        return HTTPException(status_code=404, detail="review not found")
+    return response
+
+
+@trace_execution
+@router.get("/get-program-reviews-list")
+async def get_program_review_list(db: Session = Depends(get_db)):
+    response = await program_db.get_program_review_list(db)
+    if not response:
+        return HTTPException(status_code=404, detail=ProgramConstants.REVIEW_NOT_FOUND)
+    return response
+
+
+@trace_execution
+@router.get("/get-program-mapping-list")
+async def get_program_mapping_list(db: Session = Depends(get_db)):
+    response = await program_db.get_program_mapping_list(db)
+    if not response:
+        return HTTPException(status_code=404, detail=ProgramConstants.REVIEW_NOT_FOUND)
+    return response

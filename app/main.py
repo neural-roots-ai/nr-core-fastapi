@@ -6,9 +6,9 @@ from src.authentication.routes import router as auth_router
 from src.users.routes import router as users_router
 from src.program.routes import router as program_router
 from src.notification.routes import router as notification_router
-from apscheduler.schedulers.background import BackgroundScheduler
-from src.notification.data_acces import email_job_scheduler_level
-from src.db import get_db
+#from apscheduler.schedulers.background import BackgroundScheduler
+#from src.notification.data_acces import email_job_scheduler_level
+#from src.db import get_db
 
 app = FastAPI()
 

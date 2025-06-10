@@ -113,6 +113,17 @@ class Curriculum(Base):
     updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
     created_on = Column(TIMESTAMP(timezone=True), nullable=False)
 
+class Topic(Base):
+    __tablename__ = "topic"
+
+    topic_id = Column(primary_key=True, index=True)
+    curriculum_id = Column(Integer, ForeignKey("curriculum.curriculum_id"), nullable=False)
+    module_id = Column(Integer, nullable=False)
+    topic = Column(String(50), nullable=False)
+    is_active = Column(Boolean, nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+
 class Project(Base):
     __tablename__ = "project"
 
@@ -128,3 +139,13 @@ class Project(Base):
     updated_on = Column(TIMESTAMP(timezone=True), nullable=False)
     created_on = Column(TIMESTAMP(timezone=True), nullable=False)
 
+class ProgramMapping(Base):
+    __tablename__ = "program_mapping"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    value = Column(String(500), nullable=False)
+    desc = Column(String(500), nullable=True)  # Optional field
+    created_on = Column(TIMESTAMP(timezone=True), nullable=False)
+    updated_on = Column(TIMESTAMP(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False)

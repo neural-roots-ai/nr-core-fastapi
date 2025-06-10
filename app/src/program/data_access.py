@@ -243,3 +243,91 @@ async def get_learning_page_faq(db: Session = Depends(get_db)):
                 "is_active": faq_data.is_active
             })
         return response
+
+async def get_curriculum_by_program_id(program_id:int, db: Session = Depends(get_db)):
+    result: list = db.query(models.Curriculum, models.Topic)\
+        .join(models.Topic, models.Curriculum.curriculum_id == models.Topic.curriculum_id)\
+        .filter(
+            models.Curriculum.is_active == True, models.Topic.is_active == True, 
+            models.Curriculum.program_id == program_id
+        ).order_by(models.Curriculum.program_id).all()
+    if result:
+        response = {}
+        for curriculum_data, topic_data in result:
+            topic_dict = {
+                "topic_id": topic_data.topic_id,
+                "curriculum_id": topic_data.curriculum_id,
+                "topic": topic_data.topic,
+                "module_id": topic_data.module_id,
+                "is_active": topic_data.is_active
+            }
+            if curriculum_data.curriculum_title not in response:
+                response[curriculum_data.curriculum_title] = {
+                    "curriculum_id": curriculum_data.curriculum_id,
+                    "program_id": curriculum_data.program_id,
+                    "module_id": curriculum_data.module_id,
+                    "curriculum_title": curriculum_data.curriculum_title,
+                    "topic_list": [topic_dict],
+                    "is_active": curriculum_data.is_active
+                }
+            else:
+                response[curriculum_data.curriculum_title]["topic_list"].append(topic_dict)
+        return response
+
+async def get_project_list(db: Session = Depends(get_db)):
+    result: list[models.Project] = db.query(models.Project).filter(
+        models.Project.is_active == True
+        ).order_by(models.Project.project_sequence).all()
+    if result:
+        response = []
+        for project_data in result:
+            response.append({
+                "project_id": project_data.project_id,
+                "program_id": project_data.program_id,
+                "project_title": project_data.project_title,
+                "project_description": project_data.project_description,
+                "project_outcome": project_data.project_outcome,
+                "project_sequence": project_data.project_sequence,
+                "project_img": project_data.project_img,
+                "project_tag": project_data.project_tag,
+                "is_active": project_data.is_active
+            })
+        return response
+    
+
+async def get_program_review_list(db: Session = Depends(get_db)):
+    result: list[models.Review] = db.query(models.Review)\
+        .filter(models.Review.is_active == True)\
+        .order_by(models.Review.review_sequence)\
+        .all()
+    
+    if result:
+        response = []
+        for review_data in result:
+            response.append({
+                "review_id": review_data.review_id,
+                "review_sequence": review_data.review_sequence,
+                "reviewer_name": review_data.reviewer_name,
+                "review_desc": review_data.review_desc,
+                "review_type": review_data.review_type,
+                "program_type": review_data.program_type,
+                "is_active": review_data.is_active
+            })
+        return response
+
+async def get_program_mapping_list(db: Session = Depends(get_db)):
+    response = []
+    result: list[models.ProgramMapping] = db.query(models.ProgramMapping)\
+        .filter(models.ProgramMapping.is_active == True)\
+        .all()
+    
+    if result:
+        for program_mapping_data in result:
+            response.append({
+                "id": program_mapping_data.id,
+                "name": program_mapping_data.name,
+                "value": program_mapping_data.value,
+                "desc": program_mapping_data.desc,
+                "is_active": program_mapping_data.is_active
+            })
+    return response
