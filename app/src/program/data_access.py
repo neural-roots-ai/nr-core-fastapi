@@ -331,3 +331,20 @@ async def get_program_mapping_list(db: Session = Depends(get_db)):
                 "is_active": program_mapping_data.is_active
             })
     return response
+
+async def get_image_mapping_list(db: Session = Depends(get_db)):
+    response = []
+    result: list[models.ImageMapping] = db.query(models.ImageMapping)\
+        .filter(models.ImageMapping.is_active == True)\
+        .all()
+    
+    if result:
+        for image_mapping_data in result:
+            response.append({
+                "id": image_mapping_data.id,
+                "name": image_mapping_data.name,
+                "img_path": image_mapping_data.img_path,
+                "desc": image_mapping_data.desc,
+                "is_active": image_mapping_data.is_active
+            })
+    return response

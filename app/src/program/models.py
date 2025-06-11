@@ -149,3 +149,14 @@ class ProgramMapping(Base):
     created_on = Column(TIMESTAMP(timezone=True), nullable=False)
     updated_on = Column(TIMESTAMP(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False)
+
+class ImageMapping(Base):
+    __tablename__ = "image_mapping"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    img_path = Column(String(100), nullable=False)
+    desc = Column(String(100), nullable=True)  # Optional field
+    created_on = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_on = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, nullable=False)
