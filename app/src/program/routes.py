@@ -92,3 +92,11 @@ async def get_image_mapping_list(db: Session = Depends(get_db)):
     if not response:
         return HTTPException(status_code=404, detail=ProgramConstants.PROGRAM_FEE_NOT_FOUND)
     return response
+
+@trace_execution
+@router.get("/get-mentor-list")
+async def get_mentor_list(db: Session = Depends(get_db)):
+    response = await program_db.get_mentor_list(db)
+    if not response:
+        return HTTPException(status_code=404, detail=ProgramConstants.PROGRAM_FEE_NOT_FOUND)
+    return response

@@ -160,3 +160,19 @@ class ImageMapping(Base):
     created_on = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_on = Column(DateTime(timezone=True), onupdate=func.now())
     is_active = Column(Boolean, nullable=False)
+
+
+class Mentor(Base):
+    __tablename__ = "mentor"
+
+    mentor_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    degree = Column(String, nullable=True)
+    work_exp = Column(Integer, nullable=True)
+    company = Column(String, nullable=True)
+    university = Column(String, nullable=True)
+    img = Column(String, nullable=True)
+    skills = Column(String, nullable=True)
+    created_on = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, nullable=True)

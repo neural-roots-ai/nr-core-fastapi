@@ -348,3 +348,26 @@ async def get_image_mapping_list(db: Session = Depends(get_db)):
                 "is_active": image_mapping_data.is_active
             })
     return response
+
+async def get_mentor_list(db: Session = Depends(get_db)):
+    response = []
+    result: list[models.Mentor] = db.query(models.Mentor)\
+        .filter(models.Mentor.is_active == True)\
+        .all()
+    
+    if result:
+        for mentor_data in result:
+            response.append({
+                "mentor_id": mentor_data.mentor_id,
+                "name": mentor_data.name,
+                "degree": mentor_data.degree,
+                "work_exp": mentor_data.work_exp,
+                "company": mentor_data.company,
+                "university": mentor_data.university,
+                "img": mentor_data.img,
+                "skills": mentor_data.skills,
+                "created_on": mentor_data.created_on,
+                "updated_on": mentor_data.updated_on,
+                "is_active": mentor_data.is_active,
+    })
+    return response
