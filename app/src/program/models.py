@@ -27,6 +27,7 @@ class Program(Base):
     __tablename__ = "program"
     program_id = Column(Integer, primary_key=True, index=True)
     program_name = Column(String(50), nullable=False)
+    program_desc = Column(String, nullable=False)
     program_sequence = Column(Integer, nullable=False)
     tag = Column(String(100), nullable=False)
     program_img = Column(String(100), nullable=False)
