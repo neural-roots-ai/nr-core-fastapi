@@ -14,3 +14,8 @@ aiosmtplib==3.0.2
 slowapi==0.1.9
 python-multipart==0.0.20
 tenacity==9.0.0
+
+# Optional: local GeoIP2 country lookups (app/services/geo_service.py) when
+# there's no CDN-injected country header in front of this service. Not
+# required - geo detection degrades gracefully without it.
+# geoip2==4.8.0

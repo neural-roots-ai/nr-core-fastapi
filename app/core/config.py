@@ -50,7 +50,36 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str
     RAZORPAY_KEY_SECRET: str
     RAZORPAY_WEBHOOK_SECRET: str
-    DEFAULT_CURRENCY: str = "INR"
+    # Currencies this Razorpay account can actually charge/settle in. Stays
+    # INR-only until an international/multi-currency Razorpay approval is in
+    # place - see README "Multi-currency pricing". A currency outside this
+    # list is still shown to the browsing user (display price), but the real
+    # Razorpay order/checkout falls back to SETTLEMENT_CURRENCY.
+    RAZORPAY_CHARGE_CURRENCIES: str = "INR"
+    SETTLEMENT_CURRENCY: str = "INR"
+
+    # --- Regional pricing / currency detection ---
+    # Currency shown to a visitor whose region can't be resolved to a known
+    # currency (no geo signal, unmapped country, ...).
+    DEFAULT_CURRENCY: str = "USD"
+    # Trust an edge/CDN-injected country header (Cloudflare, CloudFront,
+    # Fastly, ...) before falling back to a local GeoIP database. Zero extra
+    # latency/infra when the app already sits behind such a CDN.
+    TRUST_CDN_COUNTRY_HEADER: bool = True
+    CDN_COUNTRY_HEADER_NAME: str = "cf-ipcountry"
+    # Optional local MaxMind GeoLite2-Country.mmdb path, used only when the
+    # CDN header above is absent/untrusted. Geo-detection degrades to
+    # Accept-Language, then DEFAULT_CURRENCY, if this isn't configured or the
+    # `geoip2` package isn't installed - never a hard dependency.
+    GEOIP_DB_PATH: str | None = None
+    # How long a resolved country->currency mapping is cached in-process
+    # before being re-read from the DB (the mapping changes rarely).
+    CURRENCY_MAP_CACHE_TTL_SECONDS: int = 300
+    PREFERRED_CURRENCY_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 180  # 180 days
+
+    @property
+    def razorpay_charge_currencies(self) -> set[str]:
+        return {c.strip().upper() for c in self.RAZORPAY_CHARGE_CURRENCIES.split(",") if c.strip()}
 
     # --- CORS ---
     # Kept as a raw comma-separated string (not list[str]): pydantic-settings

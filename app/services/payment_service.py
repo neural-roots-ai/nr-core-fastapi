@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
@@ -16,8 +17,11 @@ from app.core.exceptions import AuthenticationError, NotFoundError, PermissionDe
 from app.db.models.catalog import Program, ProgramFee
 from app.db.models.django_auth import AuthUser
 from app.db.models.payment import CourseEnrollment, PaymentOrder, PaymentTransaction
+from app.db.models.pricing import ProgramPrice
+from app.db.models.promo import PromoCodeRedemption
 from app.schemas.payment import VerifyPaymentRequest
-from app.services import email_service, razorpay_service
+from app.services import email_service, promo_service, razorpay_service
+from app.services.currency_service import ResolvedCurrency
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -33,10 +37,11 @@ def _parse_fee_amount(raw: str) -> Decimal:
         raise ValidationAppError("Program fee is not configured correctly.") from exc
 
 
-def _apply_discount(amount: Decimal, discount_amount: int | None) -> Decimal:
-    """program_fee.discount is a flat amount in the same currency as the
-    fee (e.g. fee=7000, discount=6500 -> payable 500), NOT a percentage -
-    confirmed against live NRDB data where discount values exceed 100.
+def _apply_discount(amount: Decimal, discount_amount: Decimal | int | None) -> Decimal:
+    """Both program_fee.discount and program_price.discount_amount are a flat
+    amount in the same currency as the price (e.g. fee=7000, discount=6500 ->
+    payable 500), NOT a percentage - confirmed against live NRDB data where
+    discount values exceed 100.
     """
     if not discount_amount:
         return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -46,7 +51,28 @@ def _apply_discount(amount: Decimal, discount_amount: int | None) -> Decimal:
     return net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-async def _get_program_fee_row(db: AsyncSession, program_id: int, country_id: int) -> ProgramFee:
+@dataclass(frozen=True)
+class _PriceResolution:
+    program: Program
+    base_amount: Decimal
+    final_amount: Decimal
+    discount_amount: Decimal
+    currency_code: str
+    country_id: int | None
+    program_fee_id: int | None
+    program_price_id: int | None
+
+
+async def _get_program_price_row(db: AsyncSession, program_id: int, currency_code: str) -> ProgramPrice | None:
+    stmt = select(ProgramPrice).where(
+        ProgramPrice.program_id == program_id,
+        ProgramPrice.currency_code == currency_code,
+        ProgramPrice.is_active.is_(True),
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _get_legacy_program_fee_row(db: AsyncSession, program_id: int, country_id: int) -> ProgramFee | None:
     stmt = (
         select(ProgramFee)
         .join(Program, ProgramFee.program_id == Program.program_id)
@@ -57,40 +83,122 @@ async def _get_program_fee_row(db: AsyncSession, program_id: int, country_id: in
             Program.is_active.is_(True),
         )
     )
-    fee = (await db.execute(stmt)).scalar_one_or_none()
-    if fee is None:
-        raise NotFoundError("No active fee found for this program and country.")
-    return fee
+    return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def get_program_fee_details(
-    db: AsyncSession, program_id: int, country_id: int
-) -> tuple[Program, Decimal, Decimal, Decimal]:
-    """Returns (program, base_amount, final_amount, discount_amount)."""
-    fee = await _get_program_fee_row(db, program_id, country_id)
+async def _get_active_program(db: AsyncSession, program_id: int) -> Program:
     program = await db.get(Program, program_id)
-    if program is None:
+    if program is None or not program.is_active:
         raise NotFoundError("Program not found.")
-    base_amount = _parse_fee_amount(fee.program_fee)
-    final_amount = _apply_discount(base_amount, fee.discount)
-    return program, base_amount, final_amount, base_amount - final_amount
+    return program
 
 
-async def create_order(db: AsyncSession, user: AuthUser, program_id: int, country_id: int) -> tuple[PaymentOrder, str]:
-    fee = await _get_program_fee_row(db, program_id, country_id)
-    program = await db.get(Program, program_id)
-    if program is None:
-        raise NotFoundError("Program not found.")
+async def _resolve_price(db: AsyncSession, program_id: int, currency_code: str, country_id: int | None) -> _PriceResolution:
+    """Prices a program in `currency_code`: the new program_price table
+    (currency-keyed) is authoritative; the legacy country-keyed program_fee
+    table is only consulted as a fallback while program_price is being
+    backfilled, and only when a country_id is actually available.
+    """
+    program = await _get_active_program(db, program_id)
 
-    base_amount = _parse_fee_amount(fee.program_fee)
-    amount = _apply_discount(base_amount, fee.discount)
-    currency = settings.DEFAULT_CURRENCY
-    amount_subunits = int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP))
+    price_row = await _get_program_price_row(db, program_id, currency_code)
+    if price_row is not None:
+        final_amount = _apply_discount(price_row.base_amount, price_row.discount_amount)
+        return _PriceResolution(
+            program=program,
+            base_amount=price_row.base_amount,
+            final_amount=final_amount,
+            discount_amount=price_row.base_amount - final_amount,
+            currency_code=currency_code,
+            country_id=country_id,
+            program_fee_id=None,
+            program_price_id=price_row.program_price_id,
+        )
+
+    if country_id is not None:
+        legacy_fee = await _get_legacy_program_fee_row(db, program_id, country_id)
+        if legacy_fee is not None:
+            # Quantize to 2dp like program_price.base_amount already is (a
+            # NUMERIC(12,2) column) - program_fee.program_fee is a bare
+            # varchar, so an unquantized "70000" would otherwise render as
+            # base_amount="70000" instead of "70000.00" in API responses.
+            base_amount = _parse_fee_amount(legacy_fee.program_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            final_amount = _apply_discount(base_amount, legacy_fee.discount)
+            return _PriceResolution(
+                program=program,
+                base_amount=base_amount,
+                final_amount=final_amount,
+                discount_amount=base_amount - final_amount,
+                # Legacy program_fee predates multi-currency and was always
+                # entered in the settlement currency (INR) - see README.
+                currency_code=settings.SETTLEMENT_CURRENCY,
+                country_id=country_id,
+                program_fee_id=legacy_fee.program_fee_id,
+                program_price_id=None,
+            )
+
+    raise NotFoundError(
+        f"Program {program_id} has no active price configured for {currency_code}. "
+        "Add a program_price row for this currency (or pass a country_id with an "
+        "existing legacy program_fee row)."
+    )
+
+
+async def get_program_fee_details(db: AsyncSession, program_id: int, resolved: ResolvedCurrency) -> _PriceResolution:
+    return await _resolve_price(db, program_id, resolved.currency_code, resolved.country_id)
+
+
+async def create_order(
+    db: AsyncSession,
+    user: AuthUser,
+    program_id: int,
+    resolved: ResolvedCurrency,
+    promo_code: str | None = None,
+) -> tuple[PaymentOrder, str]:
+    display_price = await _resolve_price(db, program_id, resolved.currency_code, resolved.country_id)
+    natively_chargeable = display_price.currency_code in settings.razorpay_charge_currencies
+
+    promo_quote = None
+    display_payable = display_price.final_amount
+    if promo_code:
+        # Locks the promo_code row and reserves a usage slot - see
+        # app/services/promo_service.py. Runs in this same uncommitted
+        # transaction, so a failure anywhere below (including the Razorpay
+        # API call) rolls the reservation back along with the order.
+        promo_quote = await promo_service.redeem(
+            db,
+            code=promo_code,
+            program_id=program_id,
+            user_id=user.id,
+            currency_code=display_price.currency_code,
+            amount=display_price.final_amount,
+            natively_chargeable=natively_chargeable,
+        )
+        display_payable = promo_quote.payable_amount
+
+    if natively_chargeable:
+        settlement_price = display_price
+        settlement_payable = display_payable
+    else:
+        # Razorpay can't charge this currency for this merchant account -
+        # fall back to the settlement currency (INR) so checkout can still
+        # happen; display_price/display_payable above are kept for what the
+        # buyer was shown. redeem() only allows a currency-scoped promo
+        # (FIXED_AMOUNT, or a capped PERCENTAGE) when natively_chargeable,
+        # so any promo reaching this branch is safe to reapply as-is.
+        settlement_price = await _resolve_price(db, program_id, settings.SETTLEMENT_CURRENCY, resolved.country_id)
+        settlement_payable = (
+            promo_service.apply_to_amount(promo_quote, settlement_price.final_amount)
+            if promo_quote is not None
+            else settlement_price.final_amount
+        )
+
+    amount_subunits = int((settlement_payable * 100).to_integral_value(rounding=ROUND_HALF_UP))
 
     receipt = f"nr-{user.id}-{program_id}-{uuid.uuid4().hex[:10]}"
     razorpay_order = await razorpay_service.create_order(
         amount_subunits=amount_subunits,
-        currency=currency,
+        currency=settlement_price.currency_code,
         receipt=receipt,
         notes={"user_id": str(user.id), "program_id": str(program_id), "username": user.username},
     )
@@ -98,19 +206,38 @@ async def create_order(db: AsyncSession, user: AuthUser, program_id: int, countr
     order = PaymentOrder(
         user_id=user.id,
         program_id=program_id,
-        program_fee_id=fee.program_fee_id,
-        country_id=country_id,
+        program_fee_id=settlement_price.program_fee_id,
+        program_price_id=settlement_price.program_price_id,
+        country_id=resolved.country_id,
         razorpay_order_id=razorpay_order["id"],
-        amount=amount,
+        amount=settlement_payable,
         amount_subunits=amount_subunits,
-        currency=currency,
+        currency=settlement_price.currency_code,
+        display_amount=display_payable,
+        display_currency=display_price.currency_code,
+        promo_code_id=promo_quote.promo_code_id if promo_quote is not None else None,
+        promo_discount_amount=promo_quote.discount_amount if promo_quote is not None else None,
         status="created",
         receipt=receipt,
     )
     db.add(order)
+    await db.flush()  # need order.id before the redemption row can reference it
+
+    if promo_quote is not None:
+        db.add(
+            PromoCodeRedemption(
+                promo_code_id=promo_quote.promo_code_id,
+                user_id=user.id,
+                payment_order_id=order.id,
+                discount_amount=promo_quote.discount_amount,
+                currency_code=promo_quote.currency_code,
+                status="reserved",
+            )
+        )
+
     await db.commit()
     await db.refresh(order)
-    return order, program.program_name
+    return order, display_price.program.program_name
 
 
 async def _upsert_enrollment(db: AsyncSession, order: PaymentOrder) -> None:
@@ -175,8 +302,12 @@ async def _record_payment_and_enroll(db: AsyncSession, order: PaymentOrder, paym
     if status == "captured":
         order.status = "paid"
         await _upsert_enrollment(db, order)
+        if order.promo_code_id is not None:
+            await promo_service.confirm_redemption(db, order.id)
     elif status == "failed" and order.status == "created":
         order.status = "failed"
+        if order.promo_code_id is not None:
+            await promo_service.release_redemption(db, order.id)
 
     await db.flush()
 

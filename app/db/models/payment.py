@@ -18,14 +18,31 @@ class PaymentOrder(Base):
     id: Mapped[int] = mapped_column(BIGINT, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("auth_user.id"), nullable=False, index=True)
     program_id: Mapped[int] = mapped_column(Integer, ForeignKey("program.program_id"), nullable=False)
-    program_fee_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("program_fee.program_fee_id"), nullable=False
+    # Exactly one of program_fee_id (legacy, country-keyed) or program_price_id
+    # (new, currency-keyed - see app.db.models.pricing.ProgramPrice) is set,
+    # depending on which pricing source resolved this order's amount.
+    program_fee_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("program_fee.program_fee_id"), nullable=True
     )
-    country_id: Mapped[int] = mapped_column(Integer, ForeignKey("country.country_id"), nullable=False)
+    program_price_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("program_price.program_price_id"), nullable=True
+    )
+    country_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("country.country_id"), nullable=True)
     razorpay_order_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # What Razorpay actually charges/settles (currently always INR - see
+    # settings.SETTLEMENT_CURRENCY / RAZORPAY_CHARGE_CURRENCIES).
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_subunits: Mapped[int] = mapped_column(BIGINT, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="INR")
+    # What the buyer was actually shown before checkout (e.g. GBP), which can
+    # differ from amount/currency above when Razorpay settlement forces a
+    # conversion to INR - see sql/004_payment_order_display_currency.sql.
+    display_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    display_currency: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Denormalized promo summary for receipts/order history - promo_code_redemption
+    # (app.db.models.promo) is the source of truth for enforcement.
+    promo_code_id: Mapped[int | None] = mapped_column(BIGINT, ForeignKey("promo_code.promo_code_id"), nullable=True)
+    promo_discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="created")
     receipt: Mapped[str] = mapped_column(String(64), nullable=False)
     notes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
